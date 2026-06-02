@@ -7,10 +7,21 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: process.env.VITE_API_URL || 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
       },
     },
   },
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+    // Ensure assets are properly referenced
+    assetsDir: 'assets',
+    // Minify for production
+    minify: 'terser',
+    // Ensure proper sourcemap for debugging
+    sourcemap: false,
+  },
+  base: '/',
 })
