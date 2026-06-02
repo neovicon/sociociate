@@ -3,7 +3,7 @@ import { useNavigate, Navigate, useLocation, Link } from 'react-router-dom';
 import useRedirectIfAuthenticated from '../hooks/useRedirectIfAuthenticated';
 import { useAuth } from '../context/AuthContext';
 // JWT decoding is performed manually without external library
-import axios from 'axios';
+import api from '../services/api';
 const AuthPage = ({ type }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -46,8 +46,8 @@ const AuthPage = ({ type }) => {
     e.preventDefault();
     setErrorMessage('');
     try {
-      const endpoint = type === 'register' ? '/api/auth/register' : '/api/auth/login';
-      const res = await axios.post(endpoint, formData);
+      const endpoint = type === 'register' ? '/auth/register' : '/auth/login';
+      const res = await api.post(endpoint, formData);
       login(res.data, res.data.token);
       navigate('/dashboard');
     } catch (err) {
@@ -103,7 +103,7 @@ const AuthPage = ({ type }) => {
         </form>
         <div className="mt-6 text-center space-y-2">
           <button
-            onClick={() => window.location.href = `http://localhost:5000/api/auth/google`}
+            onClick={() => window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/google`}
             className="w-full flex items-center justify-center gap-2 bg-white/5 border border-white/10 py-2 rounded-xl hover:bg-white/10 transition"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-5 h-5"><path fill="#FFC107" d="M43.6 20.4h-4.6V20h-16v8h9.6c-1.6 4.6-6 8-10.6 8-6.2 0-11.2-5-11.2-11.2s5-11.2 11.2-11.2c2.9 0 5.5 1.1 7.5 2.9l5.6-5.6C33.5 7.5 30.1 6 26.4 6 15.9 6 7.4 14.5 7.4 25s8.5 19 19 19c10.5 0 19-8.5 19-19 0-1.3-.1-2.5-.3-3.6z"/>
