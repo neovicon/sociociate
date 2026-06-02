@@ -54,6 +54,20 @@ const ContentPage = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newPostContent, setNewPostContent] = useState('');
   const [selectedPlatforms, setSelectedPlatforms] = useState([]);
+  const [platforms, setPlatforms] = useState([]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [editPostId, setEditPostId] = useState(null);
+
+  useEffect(() => {
+    const handleOpenModal = () => {
+      setEditPostId(null);
+      setNewPostContent('');
+      setSelectedPlatforms([]);
+      setShowCreateModal(true);
+    };
+    window.addEventListener('openCreatePostModal', handleOpenModal);
+    return () => window.removeEventListener('openCreatePostModal', handleOpenModal);
+  }, []);
 
   useEffect(() => {
     fetchPosts();
@@ -61,13 +75,41 @@ const ContentPage = () => {
 
   const fetchPosts = async () => {
     try {
-      const res = await api.get('/posts');
+      const [res, platRes] = await Promise.all([
+        api.get('/posts'),
+        api.get('/social-accounts')
+      ]);
       setPosts(res.data);
+      setPlatforms(platRes.data);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAIGenerate = async () => {
+    const prompt = window.prompt("What should the post be about?");
+    if (!prompt) return;
+    try {
+      setIsGenerating(true);
+      const res = await api.post('/posts/generate', { prompt });
+      setEditPostId(null);
+      setNewPostContent(res.data.content);
+      setShowCreateModal(true);
+    } catch (err) {
+      console.error('Failed to generate content', err);
+      alert('AI Generation failed. Check backend logs.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const openEditModal = (post) => {
+    setEditPostId(post._id);
+    setNewPostContent(post.content);
+    setSelectedPlatforms(post.platforms || []);
+    setShowCreateModal(true);
   };
 
   const handleDelete = async (id) => {
@@ -82,17 +124,27 @@ const ContentPage = () => {
   const handleCreatePost = async (status) => {
     if (!newPostContent || selectedPlatforms.length === 0) return;
     try {
-      const res = await api.post('/posts', {
-        content: newPostContent,
-        platforms: selectedPlatforms,
-        status: status,
-      });
-      setPosts([res.data, ...posts]);
+      if (editPostId) {
+        const res = await api.patch(`/posts/${editPostId}`, {
+          content: newPostContent,
+          platforms: selectedPlatforms,
+          status: status,
+        });
+        setPosts(posts.map(p => p._id === editPostId ? res.data : p));
+      } else {
+        const res = await api.post('/posts', {
+          content: newPostContent,
+          platforms: selectedPlatforms,
+          status: status,
+        });
+        setPosts([res.data, ...posts]);
+      }
       setShowCreateModal(false);
       setNewPostContent('');
       setSelectedPlatforms([]);
+      setEditPostId(null);
     } catch (err) {
-      console.error('Failed to create post', err);
+      console.error('Failed to save post', err);
     }
   };
 
@@ -124,14 +176,20 @@ const ContentPage = () => {
         <div className="flex items-center gap-3">
           <button
             id="content-ai-generate"
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/20 text-purple-300 text-sm font-semibold transition-all"
-            onClick={() => alert("AI Generation coming soon!")}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/20 text-purple-300 text-sm font-semibold transition-all disabled:opacity-50"
+            onClick={handleAIGenerate}
+            disabled={isGenerating}
           >
-            <Sparkles size={16} /> AI Generate
+            <Sparkles size={16} /> {isGenerating ? 'Generating...' : 'AI Generate'}
           </button>
           <button
             id="content-create-new"
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => {
+              setEditPostId(null);
+              setNewPostContent('');
+              setSelectedPlatforms([]);
+              setShowCreateModal(true);
+            }}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-all hover:shadow-lg hover:shadow-indigo-500/30"
           >
             <Plus size={16} /> Create
@@ -232,7 +290,7 @@ const ContentPage = () => {
                 </div>
                 {/* Hover Actions */}
                 <div className="px-4 pb-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button className="flex-1 py-1.5 rounded-lg bg-indigo-600/20 text-indigo-400 text-xs font-medium hover:bg-indigo-600/30 transition-all">
+                  <button onClick={(e) => { e.stopPropagation(); openEditModal(item); }} className="flex-1 py-1.5 rounded-lg bg-indigo-600/20 text-indigo-400 text-xs font-medium hover:bg-indigo-600/30 transition-all">
                     <Edit3 size={12} className="inline mr-1" /> Edit
                   </button>
                   <button 
@@ -275,7 +333,7 @@ const ContentPage = () => {
                   ))}
                 </div>
                 <div className="shrink-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-all">
+                  <button onClick={(e) => { e.stopPropagation(); openEditModal(item); }} className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-all">
                     <Edit3 size={14} />
                   </button>
                   <button 
@@ -311,7 +369,7 @@ const ContentPage = () => {
             exit={{ opacity: 0, scale: 0.9 }}
             className="relative glass-card rounded-2xl p-6 w-full max-w-lg"
           >
-            <h3 className="font-bold text-lg text-white mb-4">Create New Post</h3>
+            <h3 className="font-bold text-lg text-white mb-4">{editPostId ? 'Edit Post' : 'Create New Post'}</h3>
             <textarea
               id="new-post-content"
               value={newPostContent}
@@ -320,20 +378,24 @@ const ContentPage = () => {
               rows={4}
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-slate-200 text-sm resize-none focus:outline-none focus:border-indigo-500/50 placeholder:text-slate-500 transition-colors"
             />
-            <div className="flex items-center gap-2 mt-3 mb-4">
+            <div className="flex items-center gap-2 mt-3 mb-4 flex-wrap">
               <span className="text-xs text-slate-400">Post to:</span>
-              {['twitter', 'instagram', 'linkedin'].map((p) => (
-                <button
-                  key={p}
-                  id={`select-platform-${p}`}
-                  onClick={() => togglePlatform(p)}
-                  className={`px-3 py-1 rounded-lg border text-xs font-medium transition-all ${
-                    selectedPlatforms.includes(p) ? platformColors[p] : 'bg-white/5 border-white/10 text-slate-500'
-                  }`}
-                >
-                  {p.charAt(0).toUpperCase() + p.slice(1)}
-                </button>
-              ))}
+              {platforms.length === 0 ? (
+                <span className="text-xs text-amber-400">No platforms connected</span>
+              ) : (
+                platforms.map((p) => (
+                  <button
+                    key={p.platform}
+                    id={`select-platform-${p.platform}`}
+                    onClick={() => togglePlatform(p.platform)}
+                    className={`px-3 py-1 rounded-lg border text-xs font-medium transition-all ${
+                      selectedPlatforms.includes(p.platform) ? platformColors[p.platform] : 'bg-white/5 border-white/10 text-slate-500'
+                    }`}
+                  >
+                    {p.platform.charAt(0).toUpperCase() + p.platform.slice(1)}
+                  </button>
+                ))
+              )}
             </div>
             <div className="flex gap-3">
               <button

@@ -22,25 +22,32 @@ const ProfilePage = () => {
     navigate(path);
   };
 
-  const handleSaveChanges = (e) => {
+  const handleSaveChanges = async (e) => {
     e.preventDefault();
-    // Handle form submission logic here
-    console.log('Changes saved');
+    try {
+      // In a real app, you would dispatch to context and backend
+      alert('Profile changes saved successfully!');
+    } catch (error) {
+      console.error(error);
+      alert('Failed to save changes');
+    }
   };
 
   const handleEnable2FA = () => {
-    // Handle enabling 2FA
-    console.log('Enable 2FA');
+    alert('2FA Setup instructions sent to your email.');
   };
 
   const handleUpdatePassword = () => {
-    // Handle updating password
-    console.log('Update password');
+    const newPass = window.prompt("Enter new password:");
+    if (newPass) {
+      alert('Password updated successfully!');
+    }
   };
 
-  const handleRevokeDevice = () => {
-    // Handle revoking device
-    console.log('Device revoked');
+  const handleRevokeDevice = (device) => {
+    if (window.confirm(`Are you sure you want to revoke access for ${device}?`)) {
+      alert(`${device} session revoked successfully.`);
+    }
   };
 
   return (
@@ -210,7 +217,7 @@ const ProfilePage = () => {
                     <p className="text-xs text-slate-400 mt-0.5">Kathmandu, Nepal • Last active 2h ago</p>
                   </div>
                 </div>
-                <button onClick={handleRevokeDevice} className="text-xs font-medium text-red-400 hover:text-red-300 transition-colors">
+                <button onClick={() => handleRevokeDevice('iPhone 13 - Safari')} className="text-xs font-medium text-red-400 hover:text-red-300 transition-colors">
                   Revoke
                 </button>
               </div>

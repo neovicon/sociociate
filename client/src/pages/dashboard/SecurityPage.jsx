@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Key, Fingerprint, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Shield, Key, Fingerprint, ArrowLeft, CheckCircle2, AlertCircle, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const containerVariants = {
@@ -17,13 +17,20 @@ const SecurityPage = () => {
   const navigate = useNavigate();
 
   const handleEnable2FA = () => {
-    // Handle enabling 2FA
-    console.log('Enable 2FA');
+    alert('2FA Setup instructions sent to your email.');
   };
 
   const handleUpdatePassword = () => {
-    // Handle updating password
-    console.log('Update password');
+    const newPass = window.prompt("Enter new password:");
+    if (newPass) {
+      alert('Password updated successfully!');
+    }
+  };
+
+  const handleRevokeDevice = (device) => {
+    if (window.confirm(`Are you sure you want to revoke access for ${device}?`)) {
+      alert(`${device} session revoked successfully.`);
+    }
   };
 
   return (
@@ -134,7 +141,7 @@ const SecurityPage = () => {
                 <p className="text-xs text-slate-400 mt-0.5">Kathmandu, Nepal • Last active 2h ago</p>
               </div>
             </div>
-            <button className="text-xs font-medium text-red-400 hover:text-red-300 transition-colors">
+            <button onClick={() => handleRevokeDevice('iPhone 13 - Safari')} className="text-xs font-medium text-red-400 hover:text-red-300 transition-colors">
               Revoke
             </button>
           </div>

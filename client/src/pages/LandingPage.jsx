@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
 import appLogo from '../assets/app_logo.png';
 import { 
   ChevronRight, 
@@ -30,6 +31,7 @@ const LandingPage = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isYearly, setIsYearly] = useState(true);
   const [openFaq, setOpenFaq] = useState(null);
+  const { user } = useAuth();
 
   // FAQ Data
   const faqs = [
@@ -139,11 +141,19 @@ const LandingPage = () => {
 
           {/* Nav CTAs */}
           <div className="hidden md:flex items-center gap-4">
-            <a href="/login" className="text-sm font-semibold text-slate-300 hover:text-white transition-colors duration-200">Login</a>
-            <a href="/register" className="relative group overflow-hidden px-5 py-2.5 rounded-full text-xs font-semibold text-white bg-indigo-600 transition shadow-lg shadow-indigo-600/25 hover:shadow-indigo-600/40 hover:scale-102">
-              <span className="relative z-10">Start Free</span>
-              <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            </a>
+            {user ? (
+              <a href="/dashboard" className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm cursor-pointer shadow-md hover:opacity-90 transition-opacity">
+                {user.name?.charAt(0) || 'U'}
+              </a>
+            ) : (
+              <>
+                <a href="/login" className="text-sm font-semibold text-slate-300 hover:text-white transition-colors duration-200">Login</a>
+                <a href="/register" className="relative group overflow-hidden px-5 py-2.5 rounded-full text-xs font-semibold text-white bg-indigo-600 transition shadow-lg shadow-indigo-600/25 hover:shadow-indigo-600/40 hover:scale-102">
+                  <span className="relative z-10">Start Free</span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                </a>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Toggle */}
@@ -194,8 +204,14 @@ const LandingPage = () => {
               </a>
               <div className="h-px bg-white/5 my-2" />
               <div className="flex flex-col gap-3">
-                <a href="/login" className="text-center py-2.5 rounded-xl border border-white/10 text-slate-300 font-semibold">Login</a>
-                <a href="/register" className="text-center py-2.5 rounded-xl bg-indigo-600 font-semibold text-white">Start Free Trial</a>
+                {user ? (
+                  <a href="/dashboard" className="text-center py-2.5 rounded-xl bg-indigo-600 font-semibold text-white">Go to Dashboard</a>
+                ) : (
+                  <>
+                    <a href="/login" className="text-center py-2.5 rounded-xl border border-white/10 text-slate-300 font-semibold">Login</a>
+                    <a href="/register" className="text-center py-2.5 rounded-xl bg-indigo-600 font-semibold text-white">Start Free Trial</a>
+                  </>
+                )}
               </div>
             </motion.div>
           )}

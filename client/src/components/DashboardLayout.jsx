@@ -9,6 +9,7 @@ const DashboardLayout = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -46,15 +47,7 @@ const DashboardLayout = () => {
 
   return (
     <div className="flex h-screen bg-slate-950 overflow-hidden">
-      {/* Mobile Menu Toggle */}
-      <div className="md:hidden fixed top-4 right-4 z-50">
-        <button 
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 bg-slate-900 border border-white/10 rounded-lg text-slate-300"
-        >
-          {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
-      </div>
+
 
       {/* Sidebar */}
       <AnimatePresence>
@@ -94,15 +87,59 @@ const DashboardLayout = () => {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-full overflow-hidden relative">
-        <header className="h-16 border-b border-white/10 flex items-center justify-end px-6 md:px-8 bg-slate-900/30 backdrop-blur-md shrink-0 z-10">
+        <header className="h-16 border-b border-white/10 flex items-center justify-between md:justify-end px-6 md:px-8 bg-slate-900/30 backdrop-blur-md shrink-0 z-10">
+          <div className="md:hidden flex items-center">
+            <button 
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="p-2 bg-slate-900/50 border border-white/10 rounded-lg text-slate-300 hover:text-white transition-colors"
+            >
+              {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
           <div className="flex items-center gap-4">
-            <button className="hidden sm:flex bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-xl text-sm font-medium items-center gap-2 text-white transition-all shadow-lg shadow-indigo-500/25">
+            <button 
+              onClick={() => window.dispatchEvent(new Event('openCreatePostModal'))}
+              className="hidden sm:flex bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-xl text-sm font-medium items-center gap-2 text-white transition-all shadow-lg shadow-indigo-500/25"
+            >
               <Plus size={16} /> Create Post
             </button>
-            <button className="relative p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-full transition-colors">
-              <Bell size={20} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-pink-500 rounded-full border border-slate-950"></span>
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-full transition-colors"
+              >
+                <Bell size={20} />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-pink-500 rounded-full border border-slate-950"></span>
+              </button>
+
+              <AnimatePresence>
+                {showNotifications && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 mt-2 w-80 bg-slate-900 border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden"
+                  >
+                    <div className="p-4 border-b border-white/10">
+                      <h3 className="text-white font-semibold">Notifications</h3>
+                    </div>
+                    <div className="max-h-[300px] overflow-y-auto p-2">
+                      <div className="p-3 hover:bg-white/5 rounded-xl cursor-pointer transition-colors">
+                        <p className="text-sm text-slate-300">Your post was successfully published to Twitter!</p>
+                        <p className="text-xs text-slate-500 mt-1">2 mins ago</p>
+                      </div>
+                      <div className="p-3 hover:bg-white/5 rounded-xl cursor-pointer transition-colors">
+                        <p className="text-sm text-slate-300">Your scheduled post is going out in 15 minutes.</p>
+                        <p className="text-xs text-slate-500 mt-1">1 hour ago</p>
+                      </div>
+                    </div>
+                    <div className="p-3 border-t border-white/10 text-center">
+                      <button className="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors">Mark all as read</button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
             <div 
               onClick={() => navigate('/dashboard/profile')}
               className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm cursor-pointer shadow-md hover:opacity-90 transition-opacity"

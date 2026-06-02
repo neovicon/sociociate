@@ -28,6 +28,9 @@ const SchedulePage = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedView, setSelectedView] = useState('list');
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editPostId, setEditPostId] = useState(null);
+  const [editContent, setEditContent] = useState('');
 
   useEffect(() => {
     fetchScheduledPosts();
@@ -61,6 +64,26 @@ const SchedulePage = () => {
       setPosts(posts.filter(p => p._id !== id));
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleEditClick = (post) => {
+    setEditPostId(post._id);
+    setEditContent(post.content);
+    setEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editContent) return;
+    try {
+      const res = await api.patch(`/posts/${editPostId}`, { content: editContent });
+      setPosts(posts.map(p => p._id === editPostId ? { ...p, content: res.data.content } : p));
+      setEditModalOpen(false);
+      setEditPostId(null);
+      setEditContent('');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update post.');
     }
   };
 
@@ -213,6 +236,7 @@ const SchedulePage = () => {
                                 </button>
                                 <button
                                   id={`edit-${post._id}`}
+                                  onClick={() => handleEditClick(post)}
                                   className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all border border-white/5"
                                 >
                                   <Edit3 size={14} />
@@ -306,6 +330,47 @@ const SchedulePage = () => {
           </p>
         </div>
       </motion.div>
+      {/* Edit Modal */}
+      <AnimatePresence>
+        {editModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setEditModalOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="relative glass-card rounded-2xl p-6 w-full max-w-lg"
+            >
+              <h3 className="font-bold text-lg text-white mb-4">Edit Post</h3>
+              <textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                placeholder="Edit your post content..."
+                rows={4}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-slate-200 text-sm resize-none focus:outline-none focus:border-indigo-500/50 transition-colors"
+              />
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={handleSaveEdit}
+                  disabled={!editContent}
+                  className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold transition-all"
+                >
+                  Save Changes
+                </button>
+                <button
+                  onClick={() => setEditModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 text-sm font-semibold transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

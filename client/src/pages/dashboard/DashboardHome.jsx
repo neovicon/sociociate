@@ -6,7 +6,7 @@ import api from '../../services/api';
 import {
   TrendingUp, TrendingDown, ArrowUpRight, Eye, Heart, MessageSquare,
   Share2, Plus, Calendar, Clock, CheckCircle2, Zap, BarChart3,
-  Bell, ChevronRight, Sparkles, AlertCircle
+  Bell, ChevronRight, Sparkles, AlertCircle, Image as ImageIcon, Video, X
 } from 'lucide-react';
 import { TwitterIcon, InstagramIcon, LinkedinIcon, YoutubeIcon, FacebookIcon, TiktokIcon } from '../../components/BrandIcons';
 
@@ -50,10 +50,20 @@ const DashboardHome = () => {
   const [platforms, setPlatforms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddPlatform, setShowAddPlatform] = useState(false);
+  const [errorBanner, setErrorBanner] = useState('');
 
   // Modal State
   const [newPostContent, setNewPostContent] = useState('');
   const [selectedPlatforms, setSelectedPlatforms] = useState([]);
+  const [mediaFile, setMediaFile] = useState(null);
+  const [scheduledAt, setScheduledAt] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+
+  useEffect(() => {
+    const handleOpenModal = () => setShowCreateModal(true);
+    window.addEventListener('openCreatePostModal', handleOpenModal);
+    return () => window.removeEventListener('openCreatePostModal', handleOpenModal);
+  }, []);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -87,16 +97,38 @@ const DashboardHome = () => {
 
   const handleCreatePost = async (status) => {
     if (!newPostContent || selectedPlatforms.length === 0) return;
+    
+    if (status === 'scheduled' && !scheduledAt) {
+      setErrorBanner('Please select a schedule time.');
+      setTimeout(() => setErrorBanner(''), 5000);
+      return;
+    }
+
     try {
+      setIsUploading(true);
+      let mediaUrls = [];
+      if (mediaFile) {
+        const formData = new FormData();
+        formData.append('file', mediaFile);
+        const uploadRes = await api.post('/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        mediaUrls.push({ url: uploadRes.data.url, type: mediaFile.type.startsWith('video') ? 'video' : 'image' });
+      }
+
       const res = await api.post('/posts', {
         content: newPostContent,
         platforms: selectedPlatforms,
         status: status,
+        media: mediaUrls,
+        scheduledAt: status === 'scheduled' ? scheduledAt : undefined
       });
       setRecentPosts([res.data, ...recentPosts].slice(0, 5));
       setShowCreateModal(false);
       setNewPostContent('');
       setSelectedPlatforms([]);
+      setMediaFile(null);
+      setScheduledAt('');
 
       // Update stats if scheduled
       if (status === 'scheduled') {
@@ -104,6 +136,10 @@ const DashboardHome = () => {
       }
     } catch (err) {
       console.error('Failed to create post', err);
+      setErrorBanner(err.response?.data?.message || 'Failed to create post. Please try again.');
+      setTimeout(() => setErrorBanner(''), 5000);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -165,6 +201,12 @@ const DashboardHome = () => {
       animate="show"
       className="space-y-8"
     >
+      {errorBanner && (
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-2">
+          <AlertCircle size={16} /> {errorBanner}
+        </motion.div>
+      )}
+
       {/* Welcome Banner */}
       <motion.div
         variants={itemVariants}
@@ -322,7 +364,7 @@ const DashboardHome = () => {
                 <AlertCircle size={24} className="text-slate-400 mx-auto mb-2" />
                 <p className="text-slate-300 text-sm">No platforms connected</p>
                 <p className="text-slate-500 text-xs mt-1 mb-4">Link a social account to start publishing.</p>
-                <div className="grid grid-cols-2 gap-2 w-full">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 w-full mt-2">
                   <button
                     onClick={() => handleLinkAccount('twitter')}
                     className="px-3 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-white text-xs font-semibold transition-all flex justify-center items-center gap-2"
@@ -346,6 +388,18 @@ const DashboardHome = () => {
                     className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold transition-all flex justify-center items-center gap-2"
                   >
                     <TiktokIcon size={14} /> TikTok
+                  </button>
+                  <button
+                    onClick={() => handleLinkAccount('linkedin')}
+                    className="px-3 py-2 rounded-xl bg-blue-700 hover:bg-blue-600 text-white text-xs font-semibold transition-all flex justify-center items-center gap-2"
+                  >
+                    <LinkedinIcon size={14} /> LinkedIn
+                  </button>
+                  <button
+                    onClick={() => handleLinkAccount('youtube')}
+                    className="px-3 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-semibold transition-all flex justify-center items-center gap-2"
+                  >
+                    <YoutubeIcon size={14} /> YouTube
                   </button>
                 </div>
               </div>
@@ -375,7 +429,7 @@ const DashboardHome = () => {
 
             {platforms.length > 0 && (
               showAddPlatform ? (
-                <div className="grid grid-cols-2 gap-2 w-full mt-2">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 w-full mt-2">
                   <button
                     onClick={() => handleLinkAccount('twitter')}
                     className="px-3 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-white text-xs font-semibold transition-all flex justify-center items-center gap-2"
@@ -399,6 +453,18 @@ const DashboardHome = () => {
                     className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold transition-all flex justify-center items-center gap-2"
                   >
                     <TiktokIcon size={14} /> TikTok
+                  </button>
+                  <button
+                    onClick={() => handleLinkAccount('linkedin')}
+                    className="px-3 py-2 rounded-xl bg-blue-700 hover:bg-blue-600 text-white text-xs font-semibold transition-all flex justify-center items-center gap-2"
+                  >
+                    <LinkedinIcon size={14} /> LinkedIn
+                  </button>
+                  <button
+                    onClick={() => handleLinkAccount('youtube')}
+                    className="px-3 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-semibold transition-all flex justify-center items-center gap-2"
+                  >
+                    <YoutubeIcon size={14} /> YouTube
                   </button>
                 </div>
               ) : (
@@ -437,36 +503,71 @@ const DashboardHome = () => {
               rows={4}
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-slate-200 text-sm resize-none focus:outline-none focus:border-indigo-500/50 placeholder:text-slate-500 transition-colors"
             />
-            <div className="flex items-center gap-2 mt-3 mb-4">
+            <div className="flex items-center gap-2 mt-3 mb-4 flex-wrap">
               <span className="text-xs text-slate-400">Post to:</span>
-              {['twitter', 'instagram', 'facebook', 'tiktok', 'linkedin', 'youtube'].map((p) => (
-                <button
-                  key={p}
-                  id={`select-platform-${p}`}
-                  onClick={() => togglePlatform(p)}
-                  className={`px-3 py-1 rounded-lg border text-xs font-medium transition-all ${selectedPlatforms.includes(p) ? platformColors[p] : 'bg-white/5 border-white/10 text-slate-500'
-                    }`}
-                >
-                  {p.charAt(0).toUpperCase() + p.slice(1)}
-                </button>
-              ))}
+              {platforms.length === 0 ? (
+                <span className="text-xs text-amber-400">No platforms connected</span>
+              ) : (
+                platforms.map((p) => (
+                  <button
+                    key={p.platform}
+                    id={`select-platform-${p.platform}`}
+                    onClick={() => togglePlatform(p.platform)}
+                    className={`px-3 py-1 rounded-lg border text-xs font-medium transition-all ${selectedPlatforms.includes(p.platform) ? platformColors[p.platform] : 'bg-white/5 border-white/10 text-slate-500'
+                      }`}
+                  >
+                    {p.platform.charAt(0).toUpperCase() + p.platform.slice(1)}
+                  </button>
+                ))
+              )}
             </div>
+            
+            <div className="flex items-center gap-4 mb-4">
+              <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer hover:text-white transition-colors">
+                <ImageIcon size={16} /> Add Photo
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => setMediaFile(e.target.files[0])} />
+              </label>
+              <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer hover:text-white transition-colors">
+                <Video size={16} /> Add Video
+                <input type="file" accept="video/*" className="hidden" onChange={(e) => setMediaFile(e.target.files[0])} />
+              </label>
+              {mediaFile && (
+                <span className="text-xs text-indigo-400 flex items-center gap-1">
+                  {mediaFile.name}
+                  <button onClick={() => setMediaFile(null)}><X size={12} /></button>
+                </span>
+              )}
+            </div>
+
+            {selectedPlatforms.length > 0 && (
+              <div className="mb-4">
+                <label className="block text-xs text-slate-400 mb-1">Schedule Time (Optional)</label>
+                <input
+                  type="datetime-local"
+                  value={scheduledAt}
+                  onChange={(e) => setScheduledAt(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-slate-200 text-sm focus:outline-none focus:border-indigo-500/50 transition-colors"
+                  style={{ colorScheme: 'dark' }}
+                />
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button
                 id="modal-publish-btn"
                 onClick={() => handleCreatePost('posted')}
-                disabled={!newPostContent || selectedPlatforms.length === 0}
+                disabled={!newPostContent || selectedPlatforms.length === 0 || isUploading}
                 className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 text-white text-sm font-semibold transition-all"
               >
-                Publish Now
+                {isUploading ? 'Uploading...' : 'Publish Now'}
               </button>
               <button
                 id="modal-schedule-btn"
                 onClick={() => handleCreatePost('scheduled')}
-                disabled={!newPostContent || selectedPlatforms.length === 0}
+                disabled={!newPostContent || selectedPlatforms.length === 0 || isUploading}
                 className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-50 border border-white/10 text-slate-300 text-sm font-semibold transition-all"
               >
-                Schedule
+                {isUploading ? 'Uploading...' : 'Schedule'}
               </button>
               <button
                 id="modal-close-btn"
