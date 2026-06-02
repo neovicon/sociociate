@@ -5,8 +5,9 @@ const {
   getPosts,
   getRecentPosts,
   createPost,
-  updatePostStatus,
-  deletePost
+  updatePost,
+  deletePost,
+  generatePost
 } = require('../controllers/postController');
 
 router.use(protect);
@@ -17,8 +18,10 @@ router.route('/')
 
 router.get('/recent', getRecentPosts);
 
+router.post('/generate', generatePost);
+
 router.route('/:id')
-  .patch(updatePostStatus)
+  .patch(updatePost)
   .delete(deletePost);
 
 module.exports = router;

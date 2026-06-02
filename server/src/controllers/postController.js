@@ -1,4 +1,10 @@
 const Post = require('../models/Post');
+const OpenAI = require('openai');
+
+const openai = new OpenAI({
+  apiKey: process.env.NVIDIA_API_KEY || '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',
+  baseURL: 'https://integrate.api.nvidia.com/v1',
+});
 
 // Get all posts for a user, with optional status filter
 exports.getPosts = async (req, res) => {
@@ -54,16 +60,22 @@ exports.createPost = async (req, res) => {
   }
 };
 
-// Update post status
-exports.updatePostStatus = async (req, res) => {
+// Update post
+exports.updatePost = async (req, res) => {
   try {
-    const { status } = req.body;
+    const { status, content, platforms, scheduledAt, media } = req.body;
+    
+    let updateFields = {};
+    if (status) updateFields.status = status;
+    if (content) updateFields.content = content;
+    if (platforms) updateFields.platforms = platforms;
+    if (scheduledAt) updateFields.scheduledAt = scheduledAt;
+    if (media) updateFields.media = media;
+    if (status === 'posted') updateFields.publishedAt = new Date();
+
     const post = await Post.findOneAndUpdate(
       { _id: req.params.id, user: req.user.id },
-      { 
-        status, 
-        ...(status === 'posted' ? { publishedAt: new Date() } : {})
-      },
+      updateFields,
       { new: true }
     );
     
@@ -75,6 +87,28 @@ exports.updatePostStatus = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Generate post via OpenAI (NVIDIA)
+exports.generatePost = async (req, res) => {
+  try {
+    const { prompt } = req.body;
+    
+    const completion = await openai.chat.completions.create({
+      model: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+      messages: [{"role":"user","content": prompt}],
+      temperature: 0.6,
+      top_p: 0.95,
+      max_tokens: 1024,
+      stream: false,
+    });
+    
+    const content = completion.choices[0]?.message?.content || '';
+    res.json({ content });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error generating post' });
   }
 };
 
