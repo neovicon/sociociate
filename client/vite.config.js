@@ -16,12 +16,13 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    // Ensure assets are properly referenced
     assetsDir: 'assets',
-    // Minify for production
     minify: 'terser',
-    // Ensure proper sourcemap for debugging
     sourcemap: false,
+    // Ensure proper chunking for better performance
+    chunkSizeWarningLimit: 1000,
   },
   base: '/',
+  // Ensure assets are properly referenced with absolute paths
+  assetsInclude: ['**/*.{png,svg,jpg,jpeg,gif,webp}'],
 })
