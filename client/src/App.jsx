@@ -12,6 +12,10 @@ import SchedulePage from './pages/dashboard/SchedulePage';
 import ContentPage from './pages/dashboard/ContentPage';
 import AnalyticsPage from './pages/dashboard/AnalyticsPage';
 import ProfilePage from './pages/dashboard/ProfilePage';
+import PersonalInfoPage from './pages/dashboard/PersonalInfoPage';
+import SecurityPage from './pages/dashboard/SecurityPage';
+import BillingPage from './pages/dashboard/BillingPage';
+import NotificationsPage from './pages/dashboard/NotificationsPage';
 
 function App() {
   return (
@@ -35,6 +39,10 @@ function App() {
             <Route path="content" element={<ContentPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="profile" element={<ProfilePage />} />
+            <Route path="profile/personal-info" element={<PersonalInfoPage />} />
+            <Route path="profile/security" element={<SecurityPage />} />
+            <Route path="profile/billing" element={<BillingPage />} />
+            <Route path="profile/notifications" element={<NotificationsPage />} />
             {/* Redirect /dashboard/settings to profile for now since profile has settings */}
             <Route path="settings" element={<Navigate to="/dashboard/profile" />} />
           </Route>
