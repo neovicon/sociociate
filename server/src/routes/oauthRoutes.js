@@ -5,23 +5,26 @@ const SocialAccount = require('../models/SocialAccount');
 // Ensure we have authentication middleware
 const { protect: auth } = require('../middleware/authMiddleware'); 
 
-// In a real app, these come from process.env
-const CLIENT_ID = process.env.TWITTER_CLIENT_ID;
-const CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET;
-  const baseUrl = process.env.BASE_URL || process.env.BACKEND_URL || 'http://localhost:5000';
-const CALLBACK_URL = `${baseUrl}/api/oauth/twitter/callback`;
+// Generate dynamic callback URL based on environment
+const getCallbackUrl = (provider) => {
+  const baseUrl = process.env.BACKEND_URL || 'http://localhost:5000';
+  const baseOAuth = process.env.OAUTH_CALLBACK_BASE || '/api/oauth';
+  return `${baseUrl}${baseOAuth}/${provider}/callback`;
+};
 
 // Temporary store for code verifiers (in production, use Redis or DB session)
 const codeVerifiers = {};
 
 router.get('/twitter/connect', auth, async (req, res) => {
   try {
-    if (!CLIENT_ID || !CLIENT_SECRET) {
+    const clientId = process.env.TWITTER_CLIENT_ID;
+    const clientSecret = process.env.TWITTER_CLIENT_SECRET;
+    if (!clientId || !clientSecret) {
       return res.status(500).json({ error: 'Twitter API credentials not configured' });
     }
 
-    const client = new TwitterApi({ clientId: CLIENT_ID, clientSecret: CLIENT_SECRET });
-    const { url, codeVerifier, state } = client.generateOAuth2AuthLink(CALLBACK_URL, {
+    const client = new TwitterApi({ clientId, clientSecret });
+    const { url, codeVerifier, state } = client.generateOAuth2AuthLink(getCallbackUrl('twitter'), {
       scope: ['tweet.read', 'tweet.write', 'users.read', 'offline.access']
     });
 
@@ -45,14 +48,24 @@ router.get('/twitter/callback', async (req, res) => {
     }
 
     const { codeVerifier, userId } = sessionData;
-    const client = new TwitterApi({ clientId: CLIENT_ID, clientSecret: CLIENT_SECRET });
+    const clientId = process.env.TWITTER_CLIENT_ID;
+    const clientSecret = process.env.TWITTER_CLIENT_SECRET;
+    const client = new TwitterApi({ clientId, clientSecret });
 
-    // Exchange code for tokens
-    const { client: loggedClient, accessToken, refreshToken, expiresIn } = await client.loginWithOAuth2({
-      code,
-      codeVerifier,
-      redirectUri: CALLBACK_URL
-    });
+    let loginResult;
+    try {
+      // Exchange code for tokens
+      loginResult = await client.loginWithOAuth2({
+        code,
+        codeVerifier,
+        redirectUri: getCallbackUrl('twitter')
+      });
+    } catch (apiError) {
+      console.error('Twitter API Token Exchange Error:', apiError.response?.data || apiError.message);
+      throw new Error(`Token exchange failed: ${apiError.message}`);
+    }
+
+    const { client: loggedClient, accessToken, refreshToken, expiresIn } = loginResult;
 
     // Get user info
     const me = await loggedClient.v2.me();
@@ -86,7 +99,7 @@ router.get('/twitter/callback', async (req, res) => {
 // ==========================================
 router.get('/facebook/connect', auth, (req, res) => {
   const clientId = process.env.FACEBOOK_CLIENT_ID;
-  const redirectUri = process.env.FACEBOOK_CALLBACK_URL || `${process.env.BASE_URL}/api/oauth/facebook/callback`;
+  const redirectUri = getCallbackUrl('facebook');
   const state = req.user.id;
 
   if (!clientId) return res.status(500).json({ error: 'Facebook API not configured' });
@@ -99,7 +112,7 @@ router.get('/facebook/callback', async (req, res) => {
   const { code, state: userId } = req.query;
   const clientId = process.env.FACEBOOK_CLIENT_ID;
   const clientSecret = process.env.FACEBOOK_CLIENT_SECRET;
-  const redirectUri = process.env.FACEBOOK_CALLBACK_URL || `${process.env.BASE_URL}/api/oauth/facebook/callback`;
+  const redirectUri = getCallbackUrl('facebook');
 
   try {
     const tokenRes = await fetch(`https://graph.facebook.com/v18.0/oauth/access_token?client_id=${clientId}&redirect_uri=${redirectUri}&client_secret=${clientSecret}&code=${code}`);
@@ -131,7 +144,7 @@ router.get('/facebook/callback', async (req, res) => {
 // ==========================================
 router.get('/instagram/connect', auth, (req, res) => {
   const clientId = process.env.INSTAGRAM_CLIENT_ID;
-  const redirectUri = process.env.INSTAGRAM_CALLBACK_URL || `${process.env.BASE_URL}/api/oauth/instagram/callback`;
+  const redirectUri = getCallbackUrl('instagram');
   const state = req.user.id;
 
   if (!clientId) return res.status(500).json({ error: 'Instagram API not configured' });
@@ -144,7 +157,7 @@ router.get('/instagram/callback', async (req, res) => {
   const { code, state: userId } = req.query;
   const clientId = process.env.INSTAGRAM_CLIENT_ID;
   const clientSecret = process.env.INSTAGRAM_CLIENT_SECRET;
-  const redirectUri = process.env.INSTAGRAM_CALLBACK_URL || `${process.env.BASE_URL}/api/oauth/instagram/callback`;
+  const redirectUri = getCallbackUrl('instagram');
 
   try {
     const formData = new URLSearchParams({
@@ -186,7 +199,7 @@ router.get('/instagram/callback', async (req, res) => {
 // ==========================================
 router.get('/tiktok/connect', auth, (req, res) => {
   const clientKey = process.env.TIKTOK_CLIENT_KEY;
-  const redirectUri = process.env.TIKTOK_CALLBACK_URL || `${process.env.BASE_URL}/api/oauth/tiktok/callback`;
+  const redirectUri = getCallbackUrl('tiktok');
   const state = req.user.id;
 
   if (!clientKey) return res.status(500).json({ error: 'TikTok API not configured' });
@@ -199,7 +212,7 @@ router.get('/tiktok/callback', async (req, res) => {
   const { code, state: userId } = req.query;
   const clientKey = process.env.TIKTOK_CLIENT_KEY;
   const clientSecret = process.env.TIKTOK_CLIENT_SECRET;
-  const redirectUri = process.env.TIKTOK_CALLBACK_URL || `${process.env.BASE_URL}/api/oauth/tiktok/callback`;
+  const redirectUri = getCallbackUrl('tiktok');
 
   try {
     const tokenRes = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
@@ -247,8 +260,7 @@ const { OAuth2Client } = require('google-auth-library');
 router.get('/youtube/connect', auth, (req, res) => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const baseUrl = process.env.BASE_URL || process.env.BACKEND_URL || 'http://localhost:5000';
-  const redirectUri = `${baseUrl}/api/oauth/youtube/callback`;
+  const redirectUri = getCallbackUrl('youtube');
   const state = req.user.id;
 
   if (!clientId) return res.status(500).json({ error: 'Google API not configured' });
@@ -271,8 +283,7 @@ router.get('/youtube/callback', async (req, res) => {
   const { code, state: userId } = req.query;
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const baseUrl = process.env.BASE_URL || process.env.BACKEND_URL || 'http://localhost:5000';
-  const redirectUri = `${baseUrl}/api/oauth/youtube/callback`;
+  const redirectUri = getCallbackUrl('youtube');
 
   try {
     const oAuth2Client = new OAuth2Client(clientId, clientSecret, redirectUri);

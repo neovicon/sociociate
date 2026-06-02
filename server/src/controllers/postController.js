@@ -1,5 +1,6 @@
 const Post = require('../models/Post');
 const OpenAI = require('openai');
+const { publishToPlatforms } = require('../services/social/publishService');
 
 const openai = new OpenAI({
   apiKey: process.env.NVIDIA_API_KEY || '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',
@@ -48,8 +49,19 @@ exports.createPost = async (req, res) => {
     });
 
     if (status === 'posted') {
+      const { allSuccess, results } = await publishToPlatforms(req.user.id, content, media || [], platforms);
+      post.platformResults = results;
+      
+      if (!allSuccess) {
+        post.status = 'failed';
+        await post.save();
+        return res.status(400).json({ 
+          message: 'Failed to publish to one or more platforms. Check post details.', 
+          results,
+          post
+        });
+      }
       post.publishedAt = new Date();
-      // In a real app, this is where we would call the social media APIs to publish
     }
 
     await post.save();
@@ -71,7 +83,28 @@ exports.updatePost = async (req, res) => {
     if (platforms) updateFields.platforms = platforms;
     if (scheduledAt) updateFields.scheduledAt = scheduledAt;
     if (media) updateFields.media = media;
-    if (status === 'posted') updateFields.publishedAt = new Date();
+    if (status === 'posted') {
+      const postToUpdate = await Post.findOne({ _id: req.params.id, user: req.user.id });
+      if (!postToUpdate) return res.status(404).json({ message: 'Post not found' });
+      
+      const finalContent = content || postToUpdate.content;
+      const finalMedia = media || postToUpdate.media;
+      const finalPlatforms = platforms || postToUpdate.platforms;
+      
+      const { allSuccess, results } = await publishToPlatforms(req.user.id, finalContent, finalMedia, finalPlatforms);
+      updateFields.platformResults = results;
+      
+      if (!allSuccess) {
+        updateFields.status = 'failed';
+        const updatedPost = await Post.findOneAndUpdate({ _id: req.params.id, user: req.user.id }, updateFields, { new: true });
+        return res.status(400).json({ 
+          message: 'Failed to publish to one or more platforms. Check post details.', 
+          results,
+          post: updatedPost
+        });
+      }
+      updateFields.publishedAt = new Date();
+    }
 
     const post = await Post.findOneAndUpdate(
       { _id: req.params.id, user: req.user.id },
