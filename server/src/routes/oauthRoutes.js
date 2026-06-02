@@ -8,7 +8,8 @@ const { protect: auth } = require('../middleware/authMiddleware');
 // In a real app, these come from process.env
 const CLIENT_ID = process.env.TWITTER_CLIENT_ID;
 const CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET;
-const CALLBACK_URL = process.env.BASE_URL + '/api/oauth/twitter/callback';
+  const baseUrl = process.env.BASE_URL || process.env.BACKEND_URL || 'http://localhost:5000';
+const CALLBACK_URL = `${baseUrl}/api/oauth/twitter/callback`;
 
 // Temporary store for code verifiers (in production, use Redis or DB session)
 const codeVerifiers = {};
@@ -20,8 +21,8 @@ router.get('/twitter/connect', auth, async (req, res) => {
     }
 
     const client = new TwitterApi({ clientId: CLIENT_ID, clientSecret: CLIENT_SECRET });
-    const { url, codeVerifier, state } = client.generateOAuth2AuthLink(CALLBACK_URL, { 
-      scope: ['tweet.read', 'tweet.write', 'users.read', 'offline.access'] 
+    const { url, codeVerifier, state } = client.generateOAuth2AuthLink(CALLBACK_URL, {
+      scope: ['tweet.read', 'tweet.write', 'users.read', 'offline.access']
     });
 
     // Store verifier linked to state and user ID
@@ -47,10 +48,10 @@ router.get('/twitter/callback', async (req, res) => {
     const client = new TwitterApi({ clientId: CLIENT_ID, clientSecret: CLIENT_SECRET });
 
     // Exchange code for tokens
-    const { client: loggedClient, accessToken, refreshToken, expiresIn } = await client.loginWithOAuth2({ 
-      code, 
-      codeVerifier, 
-      redirectUri: CALLBACK_URL 
+    const { client: loggedClient, accessToken, refreshToken, expiresIn } = await client.loginWithOAuth2({
+      code,
+      codeVerifier,
+      redirectUri: CALLBACK_URL
     });
 
     // Get user info
@@ -246,7 +247,8 @@ const { OAuth2Client } = require('google-auth-library');
 router.get('/youtube/connect', auth, (req, res) => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const redirectUri = `${process.env.BASE_URL}/api/oauth/youtube/callback`;
+  const baseUrl = process.env.BASE_URL || process.env.BACKEND_URL || 'http://localhost:5000';
+  const redirectUri = `${baseUrl}/api/oauth/youtube/callback`;
   const state = req.user.id;
 
   if (!clientId) return res.status(500).json({ error: 'Google API not configured' });
@@ -269,7 +271,8 @@ router.get('/youtube/callback', async (req, res) => {
   const { code, state: userId } = req.query;
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const redirectUri = `${process.env.BASE_URL}/api/oauth/youtube/callback`;
+  const baseUrl = process.env.BASE_URL || process.env.BACKEND_URL || 'http://localhost:5000';
+  const redirectUri = `${baseUrl}/api/oauth/youtube/callback`;
 
   try {
     const oAuth2Client = new OAuth2Client(clientId, clientSecret, redirectUri);
@@ -302,3 +305,4 @@ router.get('/youtube/callback', async (req, res) => {
 });
 
 module.exports = router;
+

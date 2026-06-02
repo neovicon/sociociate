@@ -2,11 +2,16 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { OAuth2Client } = require('google-auth-library');
 
-const googleClient = new OAuth2Client(
+// Initialize Google OAuth client with proper callback URL
+const getGoogleClient = () => {
+  const baseUrl = process.env.BASE_URL || process.env.BACKEND_URL || 'http://localhost:5000';
+  const callbackUrl = `${baseUrl}/api/auth/google/callback`;
+  return new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
-  process.env.BASE_URL + '/api/auth/google/callback'
+    callbackUrl
 );
+};
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || 'your_jwt_secret_key_here', {
@@ -26,13 +31,13 @@ exports.register = async (req, res) => {
 
     const user = await User.create({ name, email, password });
     res.status(201).json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      token: generateToken(user._id),
-    });
-    } catch (error) {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        token: generateToken(user._id),
+      });
+  } catch (error) {
       // Handle duplicate key error (email already exists)
       if (error.code === 11000) {
         return res.status(400).json({ message: 'User already exists' });
@@ -71,6 +76,8 @@ exports.googleAuth = (req, res) => {
     return res.status(500).json({ message: 'Google Auth is not configured' });
   }
   
+  const googleClient = getGoogleClient();
+
   const authUrl = googleClient.generateAuthUrl({
     access_type: 'offline',
     scope: ['https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/userinfo.email'],
@@ -82,6 +89,7 @@ exports.googleAuth = (req, res) => {
 exports.googleAuthCallback = async (req, res) => {
   const { code } = req.query;
   try {
+    const googleClient = getGoogleClient();
     const { tokens } = await googleClient.getToken(code);
     googleClient.setCredentials(tokens);
     
@@ -112,3 +120,4 @@ exports.googleAuthCallback = async (req, res) => {
     res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=google_auth_failed`);
   }
 };
+
