@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import appLogo from '../assets/app_logo.png';
 import { 
@@ -142,16 +143,16 @@ const LandingPage = () => {
           {/* Nav CTAs */}
           <div className="hidden md:flex items-center gap-4">
             {user ? (
-              <a href="/dashboard" className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm cursor-pointer shadow-md hover:opacity-90 transition-opacity">
+              <Link to="/dashboard" className="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm cursor-pointer shadow-md hover:opacity-90 transition-opacity">
                 {user.name?.charAt(0) || 'U'}
-              </a>
+              </Link>
             ) : (
               <>
-                <a href="/login" className="text-sm font-semibold text-slate-300 hover:text-white transition-colors duration-200">Login</a>
-                <a href="/register" className="relative group overflow-hidden px-5 py-2.5 rounded-full text-xs font-semibold text-white bg-indigo-600 transition shadow-lg shadow-indigo-600/25 hover:shadow-indigo-600/40 hover:scale-102">
+                <Link to="/login" className="text-sm font-semibold text-slate-300 hover:text-white transition-colors duration-200">Login</Link>
+                <Link to="/register" className="relative group overflow-hidden px-5 py-2.5 rounded-full text-xs font-semibold text-white bg-indigo-600 transition shadow-lg shadow-indigo-600/25 hover:shadow-indigo-600/40 hover:scale-102">
                   <span className="relative z-10">Start Free</span>
                   <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                </a>
+                </Link>
               </>
             )}
           </div>
@@ -205,11 +206,11 @@ const LandingPage = () => {
               <div className="h-px bg-white/5 my-2" />
               <div className="flex flex-col gap-3">
                 {user ? (
-                  <a href="/dashboard" className="text-center py-2.5 rounded-xl bg-indigo-600 font-semibold text-white">Go to Dashboard</a>
+                  <Link to="/dashboard" className="text-center py-2.5 rounded-xl bg-indigo-600 font-semibold text-white">Go to Dashboard</Link>
                 ) : (
                   <>
-                    <a href="/login" className="text-center py-2.5 rounded-xl border border-white/10 text-slate-300 font-semibold">Login</a>
-                    <a href="/register" className="text-center py-2.5 rounded-xl bg-indigo-600 font-semibold text-white">Start Free Trial</a>
+                    <Link to="/login" className="text-center py-2.5 rounded-xl border border-white/10 text-slate-300 font-semibold">Login</Link>
+                    <Link to="/register" className="text-center py-2.5 rounded-xl bg-indigo-600 font-semibold text-white">Start Free Trial</Link>
                   </>
                 )}
               </div>
@@ -268,9 +269,9 @@ const LandingPage = () => {
             transition={{ duration: 0.6, delay: 0.3 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto"
           >
-            <a href="/register" className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-semibold text-white transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 hover:scale-102">
+            <Link to="/register" className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 font-semibold text-white transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 hover:scale-102">
               Start Free Trial <ChevronRight size={18} />
-            </a>
+            </Link>
             
             <a href="#sandbox" className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 font-semibold text-slate-300 hover:text-white transition flex items-center justify-center gap-2 hover:bg-white/10">
               Try Interactive Sandbox <ArrowRight size={18} />
@@ -533,9 +534,9 @@ const LandingPage = () => {
                 </ul>
               </div>
 
-              <a href="/register" className="mt-8 w-full text-center py-3 rounded-xl border border-white/10 hover:border-white/20 bg-white/5 hover:bg-white/10 text-xs font-bold text-white transition">
+              <Link to="/register" className="mt-8 w-full text-center py-3 rounded-xl border border-white/10 hover:border-white/20 bg-white/5 hover:bg-white/10 text-xs font-bold text-white transition">
                 Start for Free
-              </a>
+              </Link>
             </div>
 
             {/* Creator Plan (Highlighted) */}
@@ -578,9 +579,9 @@ const LandingPage = () => {
                 </ul>
               </div>
 
-              <a href="/register" className="mt-8 w-full text-center py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white transition shadow-lg shadow-indigo-600/20 hover:scale-102">
+              <Link to="/register" className="mt-8 w-full text-center py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white transition shadow-lg shadow-indigo-600/20 hover:scale-102">
                 Get Creator Pro (14d Trial)
-              </a>
+              </Link>
             </div>
 
             {/* Business Plan */}
@@ -619,9 +620,9 @@ const LandingPage = () => {
                 </ul>
               </div>
 
-              <a href="/register" className="mt-8 w-full text-center py-3 rounded-xl border border-white/10 hover:border-white/20 bg-white/5 hover:bg-white/10 text-xs font-bold text-white transition">
+              <Link to="/register" className="mt-8 w-full text-center py-3 rounded-xl border border-white/10 hover:border-white/20 bg-white/5 hover:bg-white/10 text-xs font-bold text-white transition">
                 Start Trial
-              </a>
+              </Link>
             </div>
           </div>
         </div>
@@ -684,9 +685,9 @@ const LandingPage = () => {
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <h2 className="text-3xl sm:text-5xl font-extrabold text-white mb-6 tracking-tight">Scale your social presence today</h2>
           <p className="text-slate-400 text-sm sm:text-base max-w-xl mx-auto mb-10 leading-relaxed">Create your account in seconds, connect your platforms, and try all premium features free for 14 days. No credit card required.</p>
-          <a href="/register" className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-lg shadow-indigo-600/30 transition hover:scale-102">
+          <Link to="/register" className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-lg shadow-indigo-600/30 transition hover:scale-102">
             Get Started For Free <ArrowRight size={16} />
-          </a>
+          </Link>
         </div>
       </section>
 

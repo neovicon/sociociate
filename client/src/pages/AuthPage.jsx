@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Navigate, useLocation } from 'react-router-dom';
+import { useNavigate, Navigate, useLocation, Link } from 'react-router-dom';
 import useRedirectIfAuthenticated from '../hooks/useRedirectIfAuthenticated';
 import { useAuth } from '../context/AuthContext';
 // JWT decoding is performed manually without external library
@@ -114,16 +114,16 @@ const AuthPage = ({ type }) => {
             {type === 'register' ? (
               <p className="text-sm text-slate-400">
                 Already have an account?{' '}
-                <a href="/login" className="text-primary-300 hover:underline">Sign In</a>
+                <Link to="/login" className="text-primary-300 hover:underline">Sign In</Link>
               </p>
             ) : (
               <p className="text-sm text-slate-400">
                 Don't have an account?{' '}
-                <a href="/register" className="text-primary-300 hover:underline">Sign Up</a>
+                <Link to="/register" className="text-primary-300 hover:underline">Sign Up</Link>
               </p>
             )}
           <div className="text-sm text-slate-400">
-            <a href="/" className="hover:text-white transition">← Back to Home</a>
+            <Link to="/" className="hover:text-white transition">← Back to Home</Link>
           </div>
         </div>
       </div>
