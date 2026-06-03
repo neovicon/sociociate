@@ -17,9 +17,14 @@ const publishToPlatforms = async (userId, content, media, platforms) => {
 
   for (const platform of platforms) {
     try {
-      const account = await SocialAccount.findOne({ user: userId, platform, isActive: true });
+      const account = await SocialAccount.findOne({ userId, platform, active: true });
       if (!account) {
-        throw new Error(`No active ${platform} account found`);
+        const errorObj = {
+          error: `${platform.toUpperCase()}_ACCOUNT_NOT_FOUND`,
+          message: `${platform.charAt(0).toUpperCase() + platform.slice(1)} account is not connected or not active`,
+          details: { userId, provider: platform }
+        };
+        throw new Error(JSON.stringify(errorObj));
       }
 
       let platformPostId;
@@ -37,7 +42,15 @@ const publishToPlatforms = async (userId, content, media, platforms) => {
       console.log(`Successfully posted to ${platform} with ID ${platformPostId}`);
     } catch (error) {
       console.error(`Failed to post to ${platform}:`, error.message);
-      results.push({ platform, status: 'failed', error: error.message });
+      
+      let parsedError = error.message;
+      try {
+        parsedError = JSON.parse(error.message);
+      } catch (e) {
+        // Not a JSON error, keep as string
+      }
+      
+      results.push({ platform, status: 'failed', error: parsedError });
       allSuccess = false;
     }
   }

@@ -135,8 +135,8 @@ const DashboardHome = () => {
         setStats(prev => ({ ...prev, scheduledPosts: prev.scheduledPosts + 1 }));
       }
     } catch (err) {
-      console.error('Failed to create post', err);
-      setErrorBanner(err.response?.data?.message || 'Failed to create post. Please try again.');
+      console.error('Failed to create post', err.response?.data || err);
+      setErrorBanner(err.response?.data?.error || err.response?.data?.message || 'Failed to create post. Please try again.');
       setTimeout(() => setErrorBanner(''), 5000);
     } finally {
       setIsUploading(false);

@@ -39,6 +39,13 @@ exports.createPost = async (req, res) => {
   try {
     const { content, platforms, status, scheduledAt, media } = req.body;
     
+    if (!content) {
+      return res.status(400).json({ error: "Content is required", missingField: "content", stage: "validation" });
+    }
+    if (!platforms || platforms.length === 0) {
+      return res.status(400).json({ error: "At least one platform is required", missingField: "platforms", stage: "validation" });
+    }
+
     const post = new Post({
       user: req.user.id,
       content,
@@ -55,8 +62,16 @@ exports.createPost = async (req, res) => {
       if (!allSuccess) {
         post.status = 'failed';
         await post.save();
+        
+        // Return structured error if it's an ACCOUNT_NOT_FOUND error
+        const notFoundError = results.find(r => r.error && r.error.error && r.error.error.endsWith('_ACCOUNT_NOT_FOUND'));
+        if (notFoundError) {
+          return res.status(400).json(notFoundError.error);
+        }
+
         return res.status(400).json({ 
-          message: 'Failed to publish to one or more platforms. Check post details.', 
+          error: 'Failed to publish to one or more platforms. Check post details.', 
+          stage: 'api',
           results,
           post
         });
@@ -68,6 +83,14 @@ exports.createPost = async (req, res) => {
     res.status(201).json(post);
   } catch (err) {
     console.error(err);
+    if (err.name === 'ValidationError') {
+      const firstError = Object.values(err.errors)[0];
+      return res.status(400).json({
+        error: firstError.message,
+        missingField: firstError.path,
+        stage: "validation"
+      });
+    }
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -91,14 +114,28 @@ exports.updatePost = async (req, res) => {
       const finalMedia = media || postToUpdate.media;
       const finalPlatforms = platforms || postToUpdate.platforms;
       
+      if (!finalContent) {
+        return res.status(400).json({ error: "Content is required", missingField: "content", stage: "validation" });
+      }
+      if (!finalPlatforms || finalPlatforms.length === 0) {
+        return res.status(400).json({ error: "At least one platform is required", missingField: "platforms", stage: "validation" });
+      }
+
       const { allSuccess, results } = await publishToPlatforms(req.user.id, finalContent, finalMedia, finalPlatforms);
       updateFields.platformResults = results;
       
       if (!allSuccess) {
         updateFields.status = 'failed';
         const updatedPost = await Post.findOneAndUpdate({ _id: req.params.id, user: req.user.id }, updateFields, { new: true });
+        
+        const notFoundError = results.find(r => r.error && r.error.error && r.error.error.endsWith('_ACCOUNT_NOT_FOUND'));
+        if (notFoundError) {
+          return res.status(400).json(notFoundError.error);
+        }
+
         return res.status(400).json({ 
-          message: 'Failed to publish to one or more platforms. Check post details.', 
+          error: 'Failed to publish to one or more platforms. Check post details.', 
+          stage: 'api',
           results,
           post: updatedPost
         });
@@ -119,6 +156,14 @@ exports.updatePost = async (req, res) => {
     res.json(post);
   } catch (err) {
     console.error(err);
+    if (err.name === 'ValidationError') {
+      const firstError = Object.values(err.errors)[0];
+      return res.status(400).json({
+        error: firstError.message,
+        missingField: firstError.path,
+        stage: "validation"
+      });
+    }
     res.status(500).json({ message: 'Server error' });
   }
 };

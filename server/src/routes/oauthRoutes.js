@@ -72,13 +72,13 @@ router.get('/twitter/callback', async (req, res) => {
 
     // Store in Database
     await SocialAccount.findOneAndUpdate(
-      { user: userId, platform: 'twitter', platformId: me.data.id },
+      { userId: userId, platform: 'twitter', platformId: me.data.id },
       {
         profileName: me.data.username,
         accessToken,
         refreshToken,
-        tokenExpiresAt: new Date(Date.now() + expiresIn * 1000),
-        isActive: true
+        expiresAt: new Date(Date.now() + expiresIn * 1000),
+        active: true
       },
       { upsert: true, new: true }
     );
@@ -123,12 +123,12 @@ router.get('/facebook/callback', async (req, res) => {
     const profileData = await profileRes.json();
 
     await SocialAccount.findOneAndUpdate(
-      { user: userId, platform: 'facebook', platformId: profileData.id },
+      { userId: userId, platform: 'facebook', platformId: profileData.id },
       {
         profileName: profileData.name,
         accessToken: tokenData.access_token,
-        tokenExpiresAt: tokenData.expires_in ? new Date(Date.now() + tokenData.expires_in * 1000) : null,
-        isActive: true
+        expiresAt: tokenData.expires_in ? new Date(Date.now() + tokenData.expires_in * 1000) : null,
+        active: true
       },
       { upsert: true, new: true }
     );
@@ -179,11 +179,11 @@ router.get('/instagram/callback', async (req, res) => {
     const profileData = await profileRes.json();
 
     await SocialAccount.findOneAndUpdate(
-      { user: userId, platform: 'instagram', platformId: profileData.id },
+      { userId: userId, platform: 'instagram', platformId: profileData.id },
       {
         profileName: profileData.username,
         accessToken: tokenData.access_token,
-        isActive: true
+        active: true
       },
       { upsert: true, new: true }
     );
@@ -235,13 +235,13 @@ router.get('/tiktok/callback', async (req, res) => {
     const profileData = await profileRes.json();
 
     await SocialAccount.findOneAndUpdate(
-      { user: userId, platform: 'tiktok', platformId: profileData.data.user.open_id },
+      { userId: userId, platform: 'tiktok', platformId: profileData.data.user.open_id },
       {
         profileName: profileData.data.user.display_name,
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token,
-        tokenExpiresAt: tokenData.expires_in ? new Date(Date.now() + tokenData.expires_in * 1000) : null,
-        isActive: true
+        expiresAt: tokenData.expires_in ? new Date(Date.now() + tokenData.expires_in * 1000) : null,
+        active: true
       },
       { upsert: true, new: true }
     );
@@ -297,14 +297,14 @@ router.get('/youtube/callback', async (req, res) => {
     const profileData = await profileRes.json();
 
     await SocialAccount.findOneAndUpdate(
-      { user: userId, platform: 'youtube', platformId: profileData.sub },
+      { userId: userId, platform: 'youtube', platformId: profileData.sub },
       {
         profileName: profileData.name || 'YouTube Account',
         profilePicture: profileData.picture,
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token,
-        tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
-        isActive: true
+        expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+        active: true
       },
       { upsert: true, new: true }
     );

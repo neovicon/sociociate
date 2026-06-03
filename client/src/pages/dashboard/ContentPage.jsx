@@ -57,12 +57,14 @@ const ContentPage = () => {
   const [platforms, setPlatforms] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [editPostId, setEditPostId] = useState(null);
+  const [postError, setPostError] = useState(null);
 
   useEffect(() => {
     const handleOpenModal = () => {
       setEditPostId(null);
       setNewPostContent('');
       setSelectedPlatforms([]);
+      setPostError(null);
       setShowCreateModal(true);
     };
     window.addEventListener('openCreatePostModal', handleOpenModal);
@@ -109,6 +111,7 @@ const ContentPage = () => {
     setEditPostId(post._id);
     setNewPostContent(post.content);
     setSelectedPlatforms(post.platforms || []);
+    setPostError(null);
     setShowCreateModal(true);
   };
 
@@ -143,8 +146,14 @@ const ContentPage = () => {
       setNewPostContent('');
       setSelectedPlatforms([]);
       setEditPostId(null);
+      setPostError(null);
     } catch (err) {
       console.error('Failed to save post', err);
+      if (err.response && err.response.data) {
+        setPostError(err.response.data);
+      } else {
+        setPostError({ message: 'An unexpected error occurred while saving the post.' });
+      }
     }
   };
 
@@ -188,6 +197,7 @@ const ContentPage = () => {
               setEditPostId(null);
               setNewPostContent('');
               setSelectedPlatforms([]);
+              setPostError(null);
               setShowCreateModal(true);
             }}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-all hover:shadow-lg hover:shadow-indigo-500/30"
@@ -370,6 +380,33 @@ const ContentPage = () => {
             className="relative glass-card rounded-2xl p-6 w-full max-w-lg"
           >
             <h3 className="font-bold text-lg text-white mb-4">{editPostId ? 'Edit Post' : 'Create New Post'}</h3>
+            
+            {postError && (
+              <div className="mb-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400">
+                <div className="flex items-start gap-2">
+                  <div className="mt-0.5"><div className="w-4 h-4 rounded-full bg-red-500/20 flex items-center justify-center text-xs font-bold">!</div></div>
+                  <div>
+                    <h4 className="font-semibold text-sm">
+                      {postError.error === 'FACEBOOK_ACCOUNT_NOT_FOUND' 
+                        ? 'Facebook Connection Error' 
+                        : (postError.error?.includes('ACCOUNT_NOT_FOUND') 
+                           ? `${postError.details?.provider ? platformNames[postError.details.provider] || postError.details.provider : 'Account'} Connection Error` 
+                           : 'Error')}
+                    </h4>
+                    <p className="text-xs mt-1 opacity-90">{postError.message || postError.error || 'Failed to publish post'}</p>
+                    
+                    {postError.details?.provider && postError.error?.includes('ACCOUNT_NOT_FOUND') && (
+                      <div className="mt-3">
+                        <a href="/dashboard/profile" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs font-medium transition-colors">
+                          Reconnect {platformNames[postError.details.provider] || postError.details.provider}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <textarea
               id="new-post-content"
               value={newPostContent}

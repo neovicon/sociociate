@@ -25,7 +25,7 @@ exports.getDashboardStats = async (req, res) => {
     const publishedPostsCount = await Post.countDocuments({ user: req.user.id, status: 'posted' });
 
     // Mock audience for now, or calculate if we had follower counts in SocialAccount
-    const accounts = await SocialAccount.find({ user: req.user.id });
+    const accounts = await SocialAccount.find({ userId: req.user.id });
     let totalAudience = 0; // If we had followers, we'd sum them here. 
 
     res.json({

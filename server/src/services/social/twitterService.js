@@ -21,7 +21,7 @@ const postToTwitter = async (account, content, media) => {
     return tweet.data.id;
   } catch (error) {
     console.error('Twitter API Error:', error);
-    throw new Error('Failed to post to Twitter');
+    throw new Error(error.message || 'Failed to post to Twitter');
   }
 };
 
