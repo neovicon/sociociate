@@ -22,6 +22,7 @@ app.use('/api/posts', require('./src/routes/postRoutes'));
 app.use('/api/analytics', require('./src/routes/analyticsRoutes'));
 app.use('/api/social-accounts', require('./src/routes/socialAccountRoutes'));
 app.use('/api/upload', require('./src/routes/uploadRoutes'));
+app.use('/api/social/facebook', require('./src/routes/facebookRoutes'));
 app.get('/', (req, res) => {
   res.send('SocioCiate API is running');
 });
