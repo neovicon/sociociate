@@ -95,6 +95,18 @@ const DashboardHome = () => {
     }
   };
 
+  const handleDisconnectAccount = async (id) => {
+    if (!window.confirm('Are you sure you want to disconnect this platform?')) return;
+    try {
+      await api.delete(`/social-accounts/${id}`);
+      setPlatforms(platforms.filter(p => p._id !== id));
+    } catch (err) {
+      console.error('Failed to disconnect account', err);
+      setErrorBanner('Failed to disconnect account. Please try again.');
+      setTimeout(() => setErrorBanner(''), 5000);
+    }
+  };
+
   const handleCreatePost = async (status) => {
     if (!newPostContent || selectedPlatforms.length === 0) return;
     
@@ -412,7 +424,16 @@ const DashboardHome = () => {
                       <span className="text-sm font-medium text-slate-200 flex items-center gap-2">
                         <PlatformIcon platform={p.platform} /> {p.profileName || p.platform}
                       </span>
-                      <span className="text-xs text-slate-500">Active</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-slate-500">Active</span>
+                        <button
+                          onClick={() => handleDisconnectAccount(p._id)}
+                          className="text-xs text-red-400 hover:text-red-300 transition-colors bg-red-400/10 hover:bg-red-400/20 px-2 py-1 rounded-lg"
+                          title="Disconnect"
+                        >
+                          Disconnect
+                        </button>
+                      </div>
                     </div>
                     <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
                       <motion.div
