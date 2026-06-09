@@ -709,8 +709,24 @@ const DashboardHome = () => {
               {loadingFacebookPages ? (
                 <div className="text-center p-4 text-slate-400 text-sm">Loading pages...</div>
               ) : facebookPages.length === 0 ? (
-                <div className="text-center p-4 text-red-400 text-sm font-medium">
-                  No Facebook pages associated to that account.
+                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-slate-300 text-xs space-y-3">
+                  <div className="text-red-400 font-semibold text-sm text-center">
+                    No Facebook Pages Found
+                  </div>
+                  <p className="leading-relaxed text-slate-400">
+                    Even if you have pages, Facebook won't return them if authorization is incomplete or permissions are restricted. Please check:
+                  </p>
+                  <ul className="list-disc pl-4 space-y-1.5 text-slate-400">
+                    <li>
+                      <strong className="text-slate-300">Grant Permissions:</strong> Disconnect and reconnect. When prompted by Facebook, make sure to check/select the Pages you want to link and allow all permissions.
+                    </li>
+                    <li>
+                      <strong className="text-slate-300">App Sandbox Mode:</strong> If the app is in Development mode on Meta, only developers/testers added to the App Dashboard can see their pages.
+                    </li>
+                    <li>
+                      <strong className="text-slate-300">Page Role:</strong> Ensure your personal Facebook profile is an Admin or Editor of the page.
+                    </li>
+                  </ul>
                 </div>
               ) : (
                 facebookPages.map(page => (

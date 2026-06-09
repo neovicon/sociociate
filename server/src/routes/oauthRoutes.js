@@ -104,7 +104,7 @@ router.get('/facebook/connect', auth, (req, res) => {
 
   if (!clientId) return res.status(500).json({ error: 'Facebook API not configured' });
 
-  const url = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=public_profile,pages_manage_posts,pages_read_engagement`;
+  const url = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=public_profile,pages_manage_posts,pages_read_engagement,pages_show_list`;
   res.json({ url });
 });
 
