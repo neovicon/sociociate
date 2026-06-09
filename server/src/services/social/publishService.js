@@ -2,6 +2,9 @@ const SocialAccount = require('../../models/SocialAccount');
 const { postToTwitter } = require('./twitterService');
 const { postToFacebook } = require('./facebookService');
 const { postToInstagram } = require('./instagramService');
+const { postToLinkedIn } = require('./linkedinService');
+const { postToTikTok } = require('./tiktokService');
+const { postToYouTube } = require('./youtubeService');
 
 /**
  * Publishes content to multiple social platforms
@@ -34,6 +37,12 @@ const publishToPlatforms = async (userId, content, media, platforms) => {
         platformPostId = await postToFacebook(account, content, media);
       } else if (platform === 'instagram') {
         platformPostId = await postToInstagram(account, content, media);
+      } else if (platform === 'linkedin') {
+        platformPostId = await postToLinkedIn(account, content, media);
+      } else if (platform === 'tiktok') {
+        platformPostId = await postToTikTok(account, content, media);
+      } else if (platform === 'youtube') {
+        platformPostId = await postToYouTube(account, content, media);
       } else {
         throw new Error(`Platform ${platform} not yet implemented for publishing`);
       }
@@ -61,3 +70,4 @@ const publishToPlatforms = async (userId, content, media, platforms) => {
 module.exports = {
   publishToPlatforms
 };
+

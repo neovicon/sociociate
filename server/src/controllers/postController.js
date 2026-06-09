@@ -80,6 +80,16 @@ exports.createPost = async (req, res) => {
     }
 
     await post.save();
+
+    // Schedule background publish job if scheduled status
+    if (post.status === 'scheduled' && post.scheduledAt) {
+      const { getAgenda } = require('../services/scheduler');
+      const agenda = getAgenda();
+      if (agenda) {
+        await agenda.schedule(new Date(post.scheduledAt), 'publish_post', { postId: post._id });
+      }
+    }
+
     res.status(201).json(post);
   } catch (err) {
     console.error(err);
@@ -100,16 +110,20 @@ exports.updatePost = async (req, res) => {
   try {
     const { status, content, platforms, scheduledAt, media } = req.body;
     
+    const postToUpdate = await Post.findOne({ _id: req.params.id, user: req.user.id });
+    if (!postToUpdate) return res.status(404).json({ message: 'Post not found' });
+
     let updateFields = {};
     if (status) updateFields.status = status;
     if (content) updateFields.content = content;
     if (platforms) updateFields.platforms = platforms;
     if (scheduledAt) updateFields.scheduledAt = scheduledAt;
     if (media) updateFields.media = media;
+
+    const wasScheduled = postToUpdate.status === 'scheduled';
+    const originalScheduledAt = postToUpdate.scheduledAt;
+
     if (status === 'posted') {
-      const postToUpdate = await Post.findOne({ _id: req.params.id, user: req.user.id });
-      if (!postToUpdate) return res.status(404).json({ message: 'Post not found' });
-      
       const finalContent = content || postToUpdate.content;
       const finalMedia = media || postToUpdate.media;
       const finalPlatforms = platforms || postToUpdate.platforms;
@@ -133,6 +147,13 @@ exports.updatePost = async (req, res) => {
           return res.status(400).json(notFoundError.error);
         }
 
+        // Cancel any pending scheduled jobs since it failed posting now
+        const { getAgenda } = require('../services/scheduler');
+        const agenda = getAgenda();
+        if (agenda && wasScheduled) {
+          await agenda.cancel({ 'data.postId': postToUpdate._id });
+        }
+
         return res.status(400).json({ 
           error: 'Failed to publish to one or more platforms. Check post details.', 
           stage: 'api',
@@ -151,6 +172,28 @@ exports.updatePost = async (req, res) => {
     
     if (!post) {
       return res.status(404).json({ message: 'Post not found' });
+    }
+
+    // Handle Agenda scheduling adjustments
+    const isScheduledNow = post.status === 'scheduled';
+    const timeChanged = scheduledAt && originalScheduledAt && new Date(scheduledAt).getTime() !== new Date(originalScheduledAt).getTime();
+    
+    const { getAgenda } = require('../services/scheduler');
+    const agenda = getAgenda();
+
+    if (agenda) {
+      // Cancel old job if no longer scheduled, or scheduling time has changed, or posted immediately
+      if (wasScheduled && (!isScheduledNow || timeChanged || status === 'posted')) {
+        await agenda.cancel({ 'data.postId': post._id });
+      }
+      
+      // Schedule new job if newly scheduled or scheduled time changed
+      if (isScheduledNow && (timeChanged || (!wasScheduled && status === 'scheduled'))) {
+        const targetTime = post.scheduledAt;
+        if (targetTime) {
+          await agenda.schedule(new Date(targetTime), 'publish_post', { postId: post._id });
+        }
+      }
     }
     
     res.json(post);

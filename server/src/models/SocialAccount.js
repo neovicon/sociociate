@@ -9,7 +9,9 @@ const socialAccountSchema = new mongoose.Schema({
   profileName: { type: String },
   profilePicture: { type: String },
   expiresAt: { type: Date },
-  active: { type: Boolean, default: true }
+  active: { type: Boolean, default: true },
+  requiresPageSelection: { type: Boolean, default: false },
+  pageId: { type: String }
 }, { timestamps: true });
 
 // Ensure no duplicate accounts per user per platform

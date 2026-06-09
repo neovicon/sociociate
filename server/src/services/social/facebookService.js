@@ -6,25 +6,19 @@
  * @returns {String} - The ID of the published post
  */
 const postToFacebook = async (account, content, media) => {
-  // 1. Fetch user's pages to get a Page Access Token
-  const pagesRes = await fetch(`https://graph.facebook.com/v18.0/me/accounts?access_token=${account.accessToken}`);
-  const pagesData = await pagesRes.json();
-  
-  if (pagesData.error) {
-    throw new Error(`Failed to fetch Facebook Pages: ${pagesData.error.message}`);
+  if (account.requiresPageSelection) {
+    throw new Error('Please select a Facebook Page from the dashboard before posting.');
   }
 
-  if (!pagesData.data || pagesData.data.length === 0) {
-    throw new Error('You do not manage any Facebook Pages. Facebook no longer allows apps to post directly to personal profiles. Please create a Facebook Page first.');
+  if (!account.pageId) {
+    throw new Error('Facebook account configuration is incomplete. No page ID found.');
   }
 
-  // For simplicity, we use the first page the user manages. 
-  // (In a more advanced setup, you'd let the user select which page to connect in the UI).
-  const targetPage = pagesData.data[0];
-  const pageId = targetPage.id;
-  const pageAccessToken = targetPage.access_token;
+  // Use the stored Page Access Token and Page ID
+  const pageId = account.pageId;
+  const pageAccessToken = account.accessToken;
 
-  // 2. Post to the page's feed using the Page Access Token
+  // Post to the page's feed using the Page Access Token
   const url = `https://graph.facebook.com/v18.0/${pageId}/feed`;
   const body = {
     message: content,

@@ -59,6 +59,41 @@ const DashboardHome = () => {
   const [scheduledAt, setScheduledAt] = useState('');
   const [isUploading, setIsUploading] = useState(false);
 
+  // Facebook Page Selection State
+  const [facebookAccountPending, setFacebookAccountPending] = useState(null);
+  const [facebookPages, setFacebookPages] = useState([]);
+  const [loadingFacebookPages, setLoadingFacebookPages] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get('error');
+    const connected = params.get('connected');
+    
+    if (error) {
+      if (error === 'no_facebook_pages') {
+        setErrorBanner('No Facebook pages associated to that account.');
+      } else if (error === 'facebook_connect_failed') {
+        setErrorBanner('Failed to connect Facebook account.');
+      } else if (error === 'twitter_connect_failed') {
+        setErrorBanner('Failed to connect Twitter account.');
+      } else if (error === 'instagram_connect_failed') {
+        setErrorBanner('Failed to connect Instagram account.');
+      } else if (error === 'tiktok_connect_failed') {
+        setErrorBanner('Failed to connect TikTok account.');
+      } else if (error === 'youtube_connect_failed') {
+        setErrorBanner('Failed to connect YouTube account.');
+      } else if (error === 'linkedin_connect_failed') {
+        setErrorBanner('Failed to connect LinkedIn account.');
+      } else {
+        setErrorBanner(`Connection error: ${error.replace(/_/g, ' ')}`);
+      }
+      window.history.replaceState({}, document.title, window.location.pathname);
+      setTimeout(() => setErrorBanner(''), 8000);
+    } else if (connected) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   useEffect(() => {
     const handleOpenModal = () => setShowCreateModal(true);
     window.addEventListener('openCreatePostModal', handleOpenModal);
@@ -85,6 +120,44 @@ const DashboardHome = () => {
     fetchDashboardData();
   }, []);
 
+  useEffect(() => {
+    const pendingFB = platforms.find(p => p.platform === 'facebook' && p.requiresPageSelection);
+    if (pendingFB && !facebookAccountPending) {
+      setFacebookAccountPending(pendingFB);
+      fetchFacebookPages(pendingFB._id);
+    }
+  }, [platforms, facebookAccountPending]);
+
+  const fetchFacebookPages = async (accountId) => {
+    try {
+      setLoadingFacebookPages(true);
+      const res = await api.get(`/social-accounts/facebook/${accountId}/pages`);
+      setFacebookPages(res.data || []);
+    } catch (err) {
+      console.error('Failed to fetch Facebook pages', err);
+      setErrorBanner('Failed to fetch Facebook pages. Please reconnect.');
+    } finally {
+      setLoadingFacebookPages(false);
+    }
+  };
+
+  const handleSelectFacebookPage = async (page) => {
+    try {
+      await api.put(`/social-accounts/facebook/${facebookAccountPending._id}/select-page`, {
+        pageId: page.id,
+        pageAccessToken: page.access_token,
+        pageName: page.name
+      });
+      setFacebookAccountPending(null);
+      // Refresh platforms
+      const res = await api.get('/social-accounts');
+      setPlatforms(res.data);
+    } catch (err) {
+      console.error('Failed to select Facebook page', err);
+      setErrorBanner('Failed to save selected Facebook page.');
+    }
+  };
+
   const handleLinkAccount = async (platform = 'twitter') => {
     try {
       const res = await api.get(`/oauth/${platform}/connect`);
@@ -95,11 +168,14 @@ const DashboardHome = () => {
     }
   };
 
-  const handleDisconnectAccount = async (id) => {
-    if (!window.confirm('Are you sure you want to disconnect this platform?')) return;
+  const handleDisconnectAccount = async (id, force = false) => {
+    if (!force && !window.confirm('Are you sure you want to disconnect this platform?')) return;
     try {
       await api.delete(`/social-accounts/${id}`);
       setPlatforms(platforms.filter(p => p._id !== id));
+      if (facebookAccountPending?._id === id) {
+        setFacebookAccountPending(null);
+      }
     } catch (err) {
       console.error('Failed to disconnect account', err);
       setErrorBanner('Failed to disconnect account. Please try again.');
@@ -148,8 +224,22 @@ const DashboardHome = () => {
       }
     } catch (err) {
       console.error('Failed to create post', err.response?.data || err);
-      setErrorBanner(err.response?.data?.error || err.response?.data?.message || 'Failed to create post. Please try again.');
-      setTimeout(() => setErrorBanner(''), 5000);
+      
+      let errMsg = err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to create post. Please try again.';
+      if (err.response?.data?.results) {
+        const failedResults = err.response.data.results.filter(r => r.status === 'failed');
+        if (failedResults.length > 0) {
+          const errorMessages = failedResults.map(r => {
+            const platformName = r.platform.charAt(0).toUpperCase() + r.platform.slice(1);
+            const details = r.error?.message || r.error?.error || (typeof r.error === 'string' ? r.error : JSON.stringify(r.error));
+            return `${platformName}: ${details}`;
+          });
+          errMsg = `Failed to publish: ${errorMessages.join(' | ')}`;
+        }
+      }
+      
+      setErrorBanner(errMsg);
+      setTimeout(() => setErrorBanner(''), 8000);
     } finally {
       setIsUploading(false);
     }
@@ -598,6 +688,49 @@ const DashboardHome = () => {
                 Cancel
               </button>
             </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Facebook Page Selection Modal */}
+      {facebookAccountPending && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="relative glass-card rounded-2xl p-6 w-full max-w-md"
+          >
+            <h3 className="font-bold text-lg text-white mb-2">Select Facebook Page</h3>
+            <p className="text-sm text-slate-400 mb-4">
+              Please choose the Facebook Page you want to connect for posting.
+            </p>
+            <div className="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+              {loadingFacebookPages ? (
+                <div className="text-center p-4 text-slate-400 text-sm">Loading pages...</div>
+              ) : facebookPages.length === 0 ? (
+                <div className="text-center p-4 text-red-400 text-sm font-medium">
+                  No Facebook pages associated to that account.
+                </div>
+              ) : (
+                facebookPages.map(page => (
+                  <button
+                    key={page.id}
+                    onClick={() => handleSelectFacebookPage(page)}
+                    className="w-full text-left p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-indigo-500/50 transition-all flex items-center justify-between group"
+                  >
+                    <span className="text-sm font-medium text-slate-200">{page.name}</span>
+                    <ChevronRight size={16} className="text-slate-500 group-hover:text-indigo-400" />
+                  </button>
+                ))
+              )}
+            </div>
+            <button
+              onClick={() => handleDisconnectAccount(facebookAccountPending._id, true)}
+              className="mt-4 w-full py-2.5 rounded-xl border border-white/10 text-slate-400 hover:bg-white/5 transition-all text-sm font-semibold"
+            >
+              Cancel & Disconnect
+            </button>
           </motion.div>
         </div>
       )}

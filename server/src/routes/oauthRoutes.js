@@ -87,10 +87,10 @@ router.get('/twitter/callback', async (req, res) => {
     delete codeVerifiers[state];
 
     // Redirect back to frontend dashboard
-    res.redirect(process.env.FRONTEND_URL + '/dashboard/profile?connected=twitter');
+    res.redirect(process.env.FRONTEND_URL + '/dashboard?connected=twitter');
   } catch (error) {
     console.error('Error handling Twitter callback:', error);
-    res.redirect(process.env.FRONTEND_URL + '/dashboard/profile?error=twitter_connect_failed');
+    res.redirect(process.env.FRONTEND_URL + '/dashboard?error=twitter_connect_failed');
   }
 });
 
@@ -122,20 +122,46 @@ router.get('/facebook/callback', async (req, res) => {
     const profileRes = await fetch(`https://graph.facebook.com/me?fields=id,name&access_token=${tokenData.access_token}`);
     const profileData = await profileRes.json();
 
+    const pagesRes = await fetch(`https://graph.facebook.com/v18.0/me/accounts?access_token=${tokenData.access_token}`);
+    const pagesData = await pagesRes.json();
+    
+    if (pagesData.error) throw new Error(pagesData.error.message);
+    
+    let requiresPageSelection = false;
+    let pageId = null;
+    let accountAccessToken = tokenData.access_token; // default to user token
+    let profileName = profileData.name;
+
+    if (pagesData.data && pagesData.data.length === 1) {
+      pageId = pagesData.data[0].id;
+      accountAccessToken = pagesData.data[0].access_token;
+      profileName = pagesData.data[0].name;
+    } else {
+      requiresPageSelection = true;
+      profileName = "Pending Page Selection";
+    }
+
     await SocialAccount.findOneAndUpdate(
       { userId: userId, platform: 'facebook', platformId: profileData.id },
       {
-        profileName: profileData.name,
-        accessToken: tokenData.access_token,
+        profileName,
+        accessToken: accountAccessToken,
         expiresAt: tokenData.expires_in ? new Date(Date.now() + tokenData.expires_in * 1000) : null,
-        active: true
+        active: true,
+        requiresPageSelection,
+        pageId
       },
       { upsert: true, new: true }
     );
-    res.redirect(process.env.FRONTEND_URL + '/dashboard/profile?connected=facebook');
+    
+    if (requiresPageSelection) {
+      res.redirect(process.env.FRONTEND_URL + '/dashboard?connected=facebook&select_facebook_page=true');
+    } else {
+      res.redirect(process.env.FRONTEND_URL + '/dashboard?connected=facebook');
+    }
   } catch (error) {
     console.error('Facebook OAuth Error:', error);
-    res.redirect(process.env.FRONTEND_URL + '/dashboard/profile?error=facebook_connect_failed');
+    res.redirect(process.env.FRONTEND_URL + '/dashboard?error=facebook_connect_failed');
   }
 });
 
@@ -187,10 +213,10 @@ router.get('/instagram/callback', async (req, res) => {
       },
       { upsert: true, new: true }
     );
-    res.redirect(process.env.FRONTEND_URL + '/dashboard/profile?connected=instagram');
+    res.redirect(process.env.FRONTEND_URL + '/dashboard?connected=instagram');
   } catch (error) {
     console.error('Instagram OAuth Error:', error);
-    res.redirect(process.env.FRONTEND_URL + '/dashboard/profile?error=instagram_connect_failed');
+    res.redirect(process.env.FRONTEND_URL + '/dashboard?error=instagram_connect_failed');
   }
 });
 
@@ -245,10 +271,10 @@ router.get('/tiktok/callback', async (req, res) => {
       },
       { upsert: true, new: true }
     );
-    res.redirect(process.env.FRONTEND_URL + '/dashboard/profile?connected=tiktok');
+    res.redirect(process.env.FRONTEND_URL + '/dashboard?connected=tiktok');
   } catch (error) {
     console.error('TikTok OAuth Error:', error);
-    res.redirect(process.env.FRONTEND_URL + '/dashboard/profile?error=tiktok_connect_failed');
+    res.redirect(process.env.FRONTEND_URL + '/dashboard?error=tiktok_connect_failed');
   }
 });
 
@@ -308,10 +334,69 @@ router.get('/youtube/callback', async (req, res) => {
       },
       { upsert: true, new: true }
     );
-    res.redirect(process.env.FRONTEND_URL + '/dashboard/profile?connected=youtube');
+    res.redirect(process.env.FRONTEND_URL + '/dashboard?connected=youtube');
   } catch (error) {
     console.error('YouTube OAuth Error:', error);
-    res.redirect(process.env.FRONTEND_URL + '/dashboard/profile?error=youtube_connect_failed');
+    res.redirect(process.env.FRONTEND_URL + '/dashboard?error=youtube_connect_failed');
+  }
+});
+
+// ==========================================
+// LINKEDIN OAUTH
+// ==========================================
+router.get('/linkedin/connect', auth, (req, res) => {
+  const clientId = process.env.LINKEDIN_CLIENT_ID;
+  const redirectUri = getCallbackUrl('linkedin');
+  const state = req.user.id;
+
+  if (!clientId) return res.status(500).json({ error: 'LinkedIn API not configured' });
+
+  const url = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=openid%20profile%20w_member_social%20email`;
+  res.json({ url });
+});
+
+router.get('/linkedin/callback', async (req, res) => {
+  const { code, state: userId } = req.query;
+  const clientId = process.env.LINKEDIN_CLIENT_ID;
+  const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
+  const redirectUri = getCallbackUrl('linkedin');
+
+  try {
+    const tokenRes = await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: redirectUri,
+        client_id: clientId,
+        client_secret: clientSecret
+      })
+    });
+    const tokenData = await tokenRes.json();
+    if (tokenData.error) throw new Error(tokenData.error_description || tokenData.error);
+
+    // Fetch user profile info
+    const profileRes = await fetch('https://api.linkedin.com/v2/userinfo', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` }
+    });
+    const profileData = await profileRes.json();
+
+    await SocialAccount.findOneAndUpdate(
+      { userId: userId, platform: 'linkedin', platformId: profileData.sub },
+      {
+        profileName: profileData.name || `${profileData.given_name} ${profileData.family_name}`,
+        profilePicture: profileData.picture,
+        accessToken: tokenData.access_token,
+        expiresAt: tokenData.expires_in ? new Date(Date.now() + tokenData.expires_in * 1000) : null,
+        active: true
+      },
+      { upsert: true, new: true }
+    );
+    res.redirect(process.env.FRONTEND_URL + '/dashboard?connected=linkedin');
+  } catch (error) {
+    console.error('LinkedIn OAuth Error:', error);
+    res.redirect(process.env.FRONTEND_URL + '/dashboard?error=linkedin_connect_failed');
   }
 });
 

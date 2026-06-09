@@ -25,6 +25,8 @@ const startAgenda = async () => {
   console.log('Agenda job scheduler started');
 };
 
+const getAgenda = () => agenda;
+
 const graceful = async () => {
   if (agenda) await agenda.stop();
   process.exit(0);
@@ -33,4 +35,4 @@ const graceful = async () => {
 process.on('SIGTERM', graceful);
 process.on('SIGINT', graceful);
 
-module.exports = { agenda, startAgenda };
+module.exports = { getAgenda, startAgenda };
