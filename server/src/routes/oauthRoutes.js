@@ -166,56 +166,76 @@ router.get('/facebook/callback', async (req, res) => {
 });
 
 // ==========================================
-// INSTAGRAM OAUTH (Basic Display API)
+// INSTAGRAM OAUTH (Via Facebook Graph API for Publishing)
 // ==========================================
 router.get('/instagram/connect', auth, (req, res) => {
-  const clientId = process.env.INSTAGRAM_CLIENT_ID;
+  const clientId = process.env.FACEBOOK_CLIENT_ID;
   const redirectUri = getCallbackUrl('instagram');
   const state = req.user.id;
 
-  if (!clientId) return res.status(500).json({ error: 'Instagram API not configured' });
+  if (!clientId) return res.status(500).json({ error: 'Facebook API not configured' });
 
-  const url = `https://api.instagram.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=user_profile,user_media&response_type=code&state=${state}`;
+  const url = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=public_profile,pages_show_list,instagram_basic,instagram_content_publish`;
   res.json({ url });
 });
 
 router.get('/instagram/callback', async (req, res) => {
   const { code, state: userId } = req.query;
-  const clientId = process.env.INSTAGRAM_CLIENT_ID;
-  const clientSecret = process.env.INSTAGRAM_CLIENT_SECRET;
+  const clientId = process.env.FACEBOOK_CLIENT_ID;
+  const clientSecret = process.env.FACEBOOK_CLIENT_SECRET;
   const redirectUri = getCallbackUrl('instagram');
 
   try {
-    const formData = new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      grant_type: 'authorization_code',
-      redirect_uri: redirectUri,
-      code: code
-    });
-
-    const tokenRes = await fetch('https://api.instagram.com/oauth/access_token', {
-      method: 'POST',
-      body: formData
-    });
+    const tokenRes = await fetch(`https://graph.facebook.com/v18.0/oauth/access_token?client_id=${clientId}&redirect_uri=${redirectUri}&client_secret=${clientSecret}&code=${code}`);
     const tokenData = await tokenRes.json();
-    if (tokenData.error_message) throw new Error(tokenData.error_message);
+    if (tokenData.error) throw new Error(tokenData.error.message);
 
-    const profileRes = await fetch(`https://graph.instagram.com/me?fields=id,username&access_token=${tokenData.access_token}`);
-    const profileData = await profileRes.json();
+    const userAccessToken = tokenData.access_token;
+
+    // Fetch user's pages and their linked Instagram Business Accounts
+    const pagesRes = await fetch(`https://graph.facebook.com/v18.0/me/accounts?fields=id,name,access_token,instagram_business_account{id,username}&access_token=${userAccessToken}`);
+    const pagesData = await pagesRes.json();
+    
+    if (pagesData.error) throw new Error(pagesData.error.message);
+    
+    let igAccounts = [];
+    if (pagesData.data) {
+       for (const page of pagesData.data) {
+         if (page.instagram_business_account) {
+           igAccounts.push({
+             pageId: page.id,
+             pageName: page.name,
+             pageAccessToken: page.access_token,
+             igId: page.instagram_business_account.id,
+             igUsername: page.instagram_business_account.username
+           });
+         }
+       }
+    }
+
+    if (igAccounts.length === 0) {
+      // No linked Instagram account found
+      return res.redirect(process.env.FRONTEND_URL + '/dashboard?error=no_linked_instagram_found');
+    }
+
+    // Default to the first linked Instagram account
+    const selectedIg = igAccounts[0];
 
     await SocialAccount.findOneAndUpdate(
-      { userId: userId, platform: 'instagram', platformId: profileData.id },
+      { userId: userId, platform: 'instagram', platformId: selectedIg.igId },
       {
-        profileName: profileData.username,
-        accessToken: tokenData.access_token,
-        active: true
+        profileName: selectedIg.igUsername,
+        accessToken: selectedIg.pageAccessToken, // Page access token is required for IG publishing
+        expiresAt: tokenData.expires_in ? new Date(Date.now() + tokenData.expires_in * 1000) : null,
+        active: true,
+        pageId: selectedIg.pageId
       },
       { upsert: true, new: true }
     );
+    
     res.redirect(process.env.FRONTEND_URL + '/dashboard?connected=instagram');
   } catch (error) {
-    console.error('Instagram OAuth Error:', error);
+    console.error('Instagram (via FB) OAuth Error:', error);
     res.redirect(process.env.FRONTEND_URL + '/dashboard?error=instagram_connect_failed');
   }
 });
